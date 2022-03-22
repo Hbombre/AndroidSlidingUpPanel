@@ -202,7 +202,9 @@ public class SlidingUpPanelLayout extends ViewGroup {
     /**
      * An anchor point where the panel can stop during sliding
      */
-    private float mAnchorPoint = 1.f;
+    private float mAnchorPoint_LOW = 1.f;
+
+    private float mAnchorPoint_HIGH = 1.f;
 
     /**
      * A panel view is locked into internal scrolling or another condition that
@@ -293,7 +295,9 @@ public class SlidingUpPanelLayout extends ViewGroup {
                 mOverlayContent = ta.getBoolean(R.styleable.SlidingUpPanelLayout_umanoOverlay, DEFAULT_OVERLAY_FLAG);
                 mClipPanel = ta.getBoolean(R.styleable.SlidingUpPanelLayout_umanoClipPanel, DEFAULT_CLIP_PANEL_FLAG);
 
-                mAnchorPoint = ta.getFloat(R.styleable.SlidingUpPanelLayout_umanoAnchorPoint, DEFAULT_ANCHOR_POINT);
+                mAnchorPoint_LOW = ta.getFloat(R.styleable.SlidingUpPanelLayout_umanoAnchorPoint, DEFAULT_ANCHOR_POINT);
+
+                mAnchorPoint_HIGH = ta.getFloat(R.styleable.SlidingUpPanelLayout_umanoAnchorPoint, DEFAULT_ANCHOR_POINT);
 
                 mMaxSlideOffset = ta.getFloat(R.styleable.SlidingUpPanelLayout_umanoMaxSlidingOffset, DEFAULT_MAX_SLIDING_OFFSET);
 
@@ -531,10 +535,14 @@ public class SlidingUpPanelLayout extends ViewGroup {
                 @Override
                 public void onClick(View v) {
                     if (!isEnabled() || !isTouchEnabled()) return;
-                    if (mSlideState != PanelState.EXPANDED && mSlideState != PanelState.ANCHORED) {
-                        if (mAnchorPoint < DEFAULT_ANCHOR_POINT) {
-                            setPanelState(PanelState.ANCHORED);
-                        } else {
+                    if (mSlideState != PanelState.EXPANDED && mSlideState != PanelState.ANCHORED_LOW) {
+                        if (mAnchorPoint_HIGH < DEFAULT_ANCHOR_POINT) {
+                            setPanelState(PanelState.ANCHORED_HIGH);
+                        }
+                        else if (mAnchorPoint_LOW < DEFAULT_ANCHOR_POINT) {
+                            setPanelState(PanelState.ANCHORED_LOW);
+                        }
+                        else {
                             setPanelState(PanelState.EXPANDED);
                         }
                     } else {
@@ -582,9 +590,17 @@ public class SlidingUpPanelLayout extends ViewGroup {
      * @param anchorPoint A value between 0 and 1, determining the position of the anchor point
      *                    starting from the top of the layout.
      */
-    public void setAnchorPoint(float anchorPoint) {
+    public void setAnchorPoint_LOW(float anchorPoint) {
         if (anchorPoint > 0 && anchorPoint <= 1) {
-            mAnchorPoint = anchorPoint;
+            mAnchorPoint_LOW = anchorPoint;
+            mFirstLayout = true;
+            requestLayout();
+        }
+    }
+
+    public void setAnchorPoint_HIGH(float anchorPoint) {
+        if (anchorPoint > 0 && anchorPoint <= 1) {
+            mAnchorPoint_HIGH = anchorPoint;
             mFirstLayout = true;
             requestLayout();
         }
@@ -607,8 +623,12 @@ public class SlidingUpPanelLayout extends ViewGroup {
      *
      * @return the currently set anchor point
      */
-    public float getAnchorPoint() {
-        return mAnchorPoint;
+    public float getAnchorPoint_LOW() {
+        return mAnchorPoint_LOW;
+    }
+
+    public float getAnchorPoint_HIGH() {
+        return mAnchorPoint_HIGH;
     }
 
     /**
@@ -820,8 +840,11 @@ public class SlidingUpPanelLayout extends ViewGroup {
                 case EXPANDED:
                     mSlideOffset = mMaxSlideOffset;
                     break;
-                case ANCHORED:
-                    mSlideOffset = mAnchorPoint;
+                case ANCHORED_LOW:
+                    mSlideOffset = mAnchorPoint_LOW;
+                    break;
+                case ANCHORED_HIGH:
+                    mSlideOffset = mAnchorPoint_HIGH;
                     break;
                 case HIDDEN:
                     int newTop = computePanelTopPosition(0.0f) + (mIsSlidingUp ? +mPanelHeight : -mPanelHeight);
@@ -932,6 +955,11 @@ public class SlidingUpPanelLayout extends ViewGroup {
                     playSoundEffect(android.view.SoundEffectConstants.CLICK);
                     mFadeOnClickListener.onClick(this);
                     return true;
+                }
+
+                if (ady > dragSlop){
+                    mDragHelper.abort();
+                    return false;
                 }
                 break;
         }
@@ -1118,8 +1146,13 @@ public class SlidingUpPanelLayout extends ViewGroup {
                 requestLayout();
             }
             switch (state) {
-                case ANCHORED:
-                    smoothSlideTo(mAnchorPoint, 0);
+                case ANCHORED_LOW:
+                    Log.d(TAG, "setPanelState: ANCHORED_LOW = " + mAnchorPoint_LOW);
+                    smoothSlideTo(mAnchorPoint_LOW, 0);
+                    break;
+                case ANCHORED_HIGH:
+                    Log.d(TAG, "setPanelState: ANCHORED_HIGH");
+                    smoothSlideTo(mAnchorPoint_HIGH, 0);
                     break;
                 case COLLAPSED:
                     smoothSlideTo(0, 0);
@@ -1374,9 +1407,12 @@ public class SlidingUpPanelLayout extends ViewGroup {
                 } else if (mSlideOffset < 0) {
                     setPanelStateInternal(PanelState.HIDDEN);
                     mSlideableView.setVisibility(View.INVISIBLE);
-                } else {
+                } else if (mSlideOffset < mAnchorPoint_HIGH) {
                     updateObscuredViewVisibility();
-                    setPanelStateInternal(PanelState.ANCHORED);
+                    setPanelStateInternal(PanelState.ANCHORED_LOW);
+                }else{
+                    updateObscuredViewVisibility();
+                    setPanelStateInternal(PanelState.ANCHORED_HIGH);
                 }
             }
         }
@@ -1399,24 +1435,27 @@ public class SlidingUpPanelLayout extends ViewGroup {
             // direction is always positive if we are sliding in the expanded direction
             float direction = mIsSlidingUp ? -yvel : yvel;
 
-            if (direction > 0 && mSlideOffset <= mAnchorPoint) {
+            if (direction > 0 && mSlideOffset <= mAnchorPoint_LOW) {
                 // swipe up -> expand and stop at anchor point
-                target = computePanelTopPosition(mAnchorPoint);
-            } else if (direction > 0 && mSlideOffset > mAnchorPoint) {
+                target = computePanelTopPosition(mAnchorPoint_LOW);
+            } else if (direction > 0 && mSlideOffset > mAnchorPoint_LOW && mAnchorPoint_LOW != mAnchorPoint_HIGH) {
+                // swipe up past anchor -> expand
+                target = computePanelTopPosition(mAnchorPoint_HIGH);
+            } else if (direction > 0 && mSlideOffset > mAnchorPoint_LOW) {
                 // swipe up past anchor -> expand
                 target = computePanelTopPosition(mMaxSlideOffset);
-            } else if (direction < 0 && mSlideOffset >= mAnchorPoint) {
+            } else if (direction < 0 && mSlideOffset >= mAnchorPoint_LOW) {
                 // swipe down -> collapse and stop at anchor point
-                target = computePanelTopPosition(mAnchorPoint);
-            } else if (direction < 0 && mSlideOffset < mAnchorPoint) {
+                target = computePanelTopPosition(mAnchorPoint_LOW);
+            } else if (direction < 0 && mSlideOffset < mAnchorPoint_LOW) {
                 // swipe down past anchor -> collapse
                 target = computePanelTopPosition(0.0f);
-            } else if (mSlideOffset >= (1.f + mAnchorPoint) / 2) {
+            } else if (mSlideOffset >= (1.f + mAnchorPoint_LOW) / 2) {
                 // zero velocity, and far enough from anchor point => expand to the top
                 target = computePanelTopPosition(mMaxSlideOffset);
-            } else if (mSlideOffset >= mAnchorPoint / 2) {
+            } else if (mSlideOffset >= mAnchorPoint_LOW / 2) {
                 // zero velocity, and close enough to anchor point => go to anchor
-                target = computePanelTopPosition(mAnchorPoint);
+                target = computePanelTopPosition(mAnchorPoint_LOW);
             } else {
                 // settle at the bottom
                 target = computePanelTopPosition(0.0f);

@@ -113,12 +113,12 @@ class DemoActivity : AppCompatActivity() {
                 return true
             }
             R.id.action_anchor -> {
-                if (sliding_layout.anchorPoint == 1.0f) {
-                    sliding_layout.anchorPoint = 0.7f
-                    sliding_layout.panelState = PanelState.ANCHORED
+                if (sliding_layout.anchorPoint_LOW == 1.0f) {
+                    sliding_layout.anchorPoint_LOW = 0.7f
+                    sliding_layout.panelState = PanelState.ANCHORED_LOW
                     item.setTitle(R.string.action_anchor_disable)
                 } else {
-                    sliding_layout.anchorPoint = 1.0f
+                    sliding_layout.anchorPoint_LOW = 1.0f
                     sliding_layout.panelState = PanelState.COLLAPSED
                     item.setTitle(R.string.action_anchor_enable)
                 }
@@ -129,7 +129,7 @@ class DemoActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if ((sliding_layout.panelState == PanelState.EXPANDED || sliding_layout.panelState == PanelState.ANCHORED)) {
+        if ((sliding_layout.panelState == PanelState.EXPANDED || sliding_layout.panelState == PanelState.ANCHORED_LOW)) {
             sliding_layout.panelState = PanelState.COLLAPSED
         } else {
             super.onBackPressed()
