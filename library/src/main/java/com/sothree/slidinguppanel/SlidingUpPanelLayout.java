@@ -952,15 +952,10 @@ public class SlidingUpPanelLayout extends ViewGroup {
                 if (ady <= dragSlop
                         && adx <= dragSlop
                         && mSlideOffset > 0 && !isViewUnder(mSlideableView, (int) mInitialMotionX, (int) mInitialMotionY) && mFadeOnClickListener != null) {
-                    playSoundEffect(android.view.SoundEffectConstants.CLICK);
-                    mFadeOnClickListener.onClick(this);
-                    return true;
-                }
-
-                if (ady > dragSlop){
                     mDragHelper.abort();
                     return false;
                 }
+
                 break;
         }
         return mDragHelper.shouldInterceptTouchEvent(ev);
