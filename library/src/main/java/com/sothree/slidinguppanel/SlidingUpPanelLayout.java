@@ -1402,7 +1402,7 @@ public class SlidingUpPanelLayout extends ViewGroup {
                 } else if (mSlideOffset < 0) {
                     setPanelStateInternal(PanelState.HIDDEN);
                     mSlideableView.setVisibility(View.INVISIBLE);
-                } else if (mSlideOffset < mAnchorPoint_HIGH) {
+                } else if (mSlideOffset <= mAnchorPoint_HIGH - 0.01f) { //a buffer or else it always calls it Anchored_LOW after a drag
                     updateObscuredViewVisibility();
                     setPanelStateInternal(PanelState.ANCHORED_LOW);
                 }else{
